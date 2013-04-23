@@ -50,7 +50,7 @@ void main() {
         if (parts[0] == "traceroute") {
           assert(graph_name.isEmpty);
           graph_name = line;
-          print("setting graph name to '$graph_name'");
+          print("# setting graph name to '$graph_name'");
           return;
         }
 
@@ -60,13 +60,13 @@ void main() {
         if (parts.length == 3)
           return;
 
-        print("adding hop ${parts[0]}");
+        print("# adding hop ${parts[0]}");
 
         List<Node> new_leaves = new List();
         for (var i = 3; i < parts.length; i += 3) {
           String ip_flows = parts[i];
           double rtt = double.parse(parts[i+1], (source) {
-            print("WARNING: bad rtt: $source.");
+            print("# WARNING: bad rtt: $source.");
             return -1.0;
           });
           assert(parts[i+2] == "ms");
@@ -110,7 +110,7 @@ void main() {
         while (to_print.length != 0) {
           Node node = to_print[0];
           node._next.forEach((e) {
-              out_stream.writeln('    "${node._ip_address}" -> "${e._ip_address}"');
+              out_stream.writeln('    "${node._ip_address}" -> "${e._ip_address}" [label="${e._rtt} ms"];');
               if (!to_print.contains(e)) {
                 to_print.add(e);
               }
@@ -118,6 +118,6 @@ void main() {
           to_print.removeAt(0);
         }
         out_stream.writeln("}");
-        print("done");
+        print("# done");
     });
 }
