@@ -1,36 +1,58 @@
-import 'dart:io';
+// Expects a trace file created from paris-traceroute with args '--algo=exhaustive'.
 
-const int DEFAULT_FLOW = -1;
+import 'dart:io';
 
 class Node {
   List<Node> _next = new List<Node>();
+  String _hostname;
   String _ip_address;
   double _rtt;
   List<int> _flows = new List<int>();
 
-  Node(this._ip_address, this._rtt);
+  Node(this._hostname, this._ip_address, this._rtt);
 
   void add_child(Node n) => _next.add(n);
 }
 
-// Expects a trace file created from paris-traceroute with args '--algo=exhaustive -n'.
+String graph_name = "";
+Node root = null;
+var in_stream = stdin;
+var out_stream = stdout;
 
-// TODO: support hostnames in trace
-// TODO: output RTT to edges (colorize?)
+void writeDotFile() {
+  if (root == null) {
+    print("ERROR: no nodes found");
+    return;
+  }
+
+  out_stream.writeln('digraph "$graph_name" {');
+  List<Node> to_print = new List<Node>();
+  to_print.add(root);
+  while (to_print.length != 0) {
+    Node node = to_print[0];
+    node._next.forEach((e) {
+        // TODO: simple labels instead of these
+        out_stream.write('    "${node._hostname}\\n${node._ip_address}" -> "${e._hostname}\\n${e._ip_address}" ');
+        out_stream.writeln('[label="${e._rtt} ms"];');
+        if (!to_print.contains(e))
+        to_print.add(e);
+        });
+    to_print.removeAt(0);
+  }
+  out_stream.writeln("}");
+}
+
+// TODO: color links per flow
 void main() {
   List<String> args = new Options().arguments;
 
-  String graph_name = "";
-  Node root = null;
   List<Node> leaves = new List();
 
   // TODO: better arg handling.
-  var in_stream = stdin;
   if (args.length == 1) {
     in_stream = new File(args[0]).openRead();
   }
 
-  var out_stream = stdout;
   if (args.length == 2) {
     in_stream = new File(args[0]).openRead();
     out_stream = new File(args[1]).openWrite();
@@ -57,22 +79,24 @@ void main() {
         if (parts[0] == "MPLS")
           return;
 
-        if (parts.length == 3)
-          return;
-
         print("# adding hop ${parts[0]}");
 
+        parts = parts.sublist(3);
+        if (parts.length == 0)
+          return;
+
         List<Node> new_leaves = new List();
-        for (var i = 3; i < parts.length; i += 3) {
-          String ip_flows = parts[i];
-          double rtt = double.parse(parts[i+1], (source) {
+        for (var i = 0; i < parts.length; i += 4) {
+          String hostname = parts[i];
+          String ip_flows = parts[i+1];
+          double rtt = double.parse(parts[i+2], (source) {
             print("# WARNING: bad rtt: $source.");
             return -1.0;
           });
-          assert(parts[i+2] == "ms");
+          assert(parts[i+3] == "ms");
 
           List<String> ip_flows_parts = ip_flows.split(":");
-          Node node = new Node(ip_flows_parts[0], rtt);
+          Node node = new Node(hostname, ip_flows_parts[0], rtt);
           if (root == null) {
             assert(ip_flows_parts.length == 1);
             root = node;
@@ -98,26 +122,5 @@ void main() {
         }
         leaves = new_leaves;
     })
-    .onDone(() {
-        if (root == null) {
-          print("ERROR: no nodes found");
-          return;
-        }
-
-        out_stream.writeln('digraph "$graph_name" {');
-        List<Node> to_print = new List<Node>();
-        to_print.add(root);
-        while (to_print.length != 0) {
-          Node node = to_print[0];
-          node._next.forEach((e) {
-              out_stream.writeln('    "${node._ip_address}" -> "${e._ip_address}" [label="${e._rtt} ms"];');
-              if (!to_print.contains(e)) {
-                to_print.add(e);
-              }
-          });
-          to_print.removeAt(0);
-        }
-        out_stream.writeln("}");
-        print("# done");
-    });
+    .onDone(writeDotFile);
 }
