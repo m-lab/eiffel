@@ -34,7 +34,7 @@ void writeDotFile() {
     node._next.forEach((e) {
         // TODO: simple labels instead of these
         out_stream.write('    "${node._hostname}\\n${node._ip_address}" -> "${e._hostname}\\n${e._ip_address}" ');
-        out_stream.writeln('[label="${e._rtt} ms"];');
+        out_stream.writeln('[label="${e._rtt.toStringAsPrecision(3)} ms"];');
         if (!to_print.contains(e))
         to_print.add(e);
         });
@@ -104,8 +104,11 @@ void main() {
           String hostname = parts[i];
           String ip_flows = parts[i+1];
           double rtt = double.parse(parts[i+2], (source) {
-            print("# WARNING: bad rtt: $source.");
-            return -1.0;
+              // Not a simple double - try splitting on '/' and returning the mean.
+              List<String> rtt_parts = source.split("/");
+              rtt_parts.removeLast();
+              List<double> rtts = rtt_parts.map((e) => double.parse(e)).toList();
+              return rtts.reduce((value, element) => value + element) / rtts.length;
           });
           assert(parts[i+3] == "ms");
 
