@@ -1,6 +1,7 @@
 // Expects a trace file created from paris-traceroute with args '--algo=exhaustive'.
 
 import 'dart:io';
+import 'package:args/args.dart';
 
 class Node {
   List<Node> _next = new List<Node>();
@@ -44,19 +45,32 @@ void writeDotFile() {
 
 // TODO: color links per flow
 void main() {
-  List<String> args = new Options().arguments;
+  ArgParser parser = new ArgParser();
+  parser.addOption('input', abbr: 'i',
+                   help: 'The paris-traceroute output. If ommitted, trace will be read from stdin.',
+                   callback: (input) {
+                       if (input != null)
+                         in_stream = new File(input).openRead();
+                   }
+  );
+  parser.addOption('output', abbr: 'o',
+                   help: 'The dot file to write. If ommitted, dot file will be written to stdout.',
+                   callback: (output) {
+                       if (output != null)
+                         out_stream = new File(output).openWrite();
+                   }
+  );
+  parser.addFlag('help', abbr: 'h', help: 'Show usage',
+                 callback: (help) {
+                     if (help) {
+                       print(parser.getUsage());
+                       exit(0);
+                     }
+                 }
+  );
+  var args = parser.parse(new Options().arguments);
 
   List<Node> leaves = new List();
-
-  // TODO: better arg handling.
-  if (args.length == 1) {
-    in_stream = new File(args[0]).openRead();
-  }
-
-  if (args.length == 2) {
-    in_stream = new File(args[0]).openRead();
-    out_stream = new File(args[1]).openWrite();
-  }
 
   in_stream
     .transform(new StringDecoder())

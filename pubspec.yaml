@@ -1,0 +1,6 @@
+name: eiffel
+author: dominic@measurementlab.net
+description: A tool for turning paris-traceroute output into a dot file.
+dependencies:
+  args: any
+
